@@ -1,122 +1,134 @@
 // Book Class: Represents a Book
 class Book {
-    constructor(title, author, year) {
+    constructor(title, author, isbn) {
         this.title = title;
         this.author = author;
-        this.year = year;
+        this.isbn = isbn;
     }
 }
-//UI Class: Handle UI Tasks
+
+// UI Class: Handle UI Tasks
 class UI {
     static displayBooks() {
-        const storedBooks = [
-            {
-                title: "Book One",
-                author: "John Doe",
-                year: "3434434"
-            },
-            {
-                title: "Book Two",
-                author: "Jane Doe",
-                year: "45545"
-            }
-        ];
+        const books = Store.getBooks();
 
-        const books = storedBooks;
-
-        //loop through all the books in the array in the local storage 
-        //calling a method and passing a book to it
         books.forEach((book) => UI.addBookToList(book));
     }
 
     static addBookToList(book) {
-        //grab element
-        const list = document.getElementById('book-list');
+        const list = document.querySelector('#book-list');
 
-        //create the table row to put into the tbody
         const row = document.createElement('tr');
 
         row.innerHTML = `
-      <td>${book.title}</td>
-      <td>${book.author}</td>
-      <td>${book.year}</td>
-      <td><a href="#" class="btn btn-danger btn-sm delete">X</a></td>
-    `;
+        <td>${book.title}</td>
+        <td>${book.author}</td>
+        <td>${book.isbn}</td>
+        <td><a href="#" class="btn btn-danger btn-sm delete">X</a></td>
+      `;
 
-
-        //append row/book to the list
         list.appendChild(row);
     }
 
-    static deleteBook(element) {
-        if (element.classList.contains('delete')) {
-
-            //delete parent element - the whole row
-            element.parentElement.parentElement.remove();
+    static deleteBook(el) {
+        if (el.classList.contains('delete')) {
+            el.parentElement.parentElement.remove();
         }
     }
 
-    static showAlert(message, className){
-      const div = document.createElement('div');
+    static showAlert(message, className) {
+        const div = document.createElement('div');
+        div.className = `alert alert-${className}`;
+        div.appendChild(document.createTextNode(message));
+        const container = document.querySelector('.container');
+        const form = document.querySelector('#book-form');
+        container.insertBefore(div, form);
 
-      div.className = `alert alert-${className}`;
-      div.appendChild(document.createTextNode(message));
-
-      //to add the element to the DOM, we need to get elements before & after
-      //before - container
-      const container = document.querySelector('.container');
-
-      //after - form
-      const form = document.querySelector('#book-form');
-
-      //insert the alert by taking the container(parent) and insert the div before the form
-      container.insertBefore(div, form);
+        // Vanish in 3 seconds
+        setTimeout(() => document.querySelector('.alert').remove(), 3000);
     }
-
 
     static clearFields() {
-        // Grab each value and clear it
         document.querySelector('#title').value = '';
         document.querySelector('#author').value = '';
-        document.querySelector('#year').value = '';
-
+        document.querySelector('#isbn').value = '';
     }
 }
-//Store Class: Handles Storage (local on the browser)
 
-//Event: Display Books
+// Store Class: Handles Storage
+class Store {
+    static getBooks() {
+        let books;
+        if (localStorage.getItem('books') === null) {
+            books = [];
+        } else {
+            books = JSON.parse(localStorage.getItem('books'));
+        }
+
+        return books;
+    }
+
+    static addBook(book) {
+        const books = Store.getBooks();
+        books.push(book);
+        localStorage.setItem('books', JSON.stringify(books));
+    }
+
+    static removeBook(isbn) {
+        const books = Store.getBooks();
+
+        books.forEach((book, index) => {
+            if (book.isbn === isbn) {
+                books.splice(index, 1);
+            }
+        });
+
+        localStorage.setItem('books', JSON.stringify(books));
+    }
+}
+
+// Event: Display Books
 document.addEventListener('DOMContentLoaded', UI.displayBooks);
 
-//Event: Add a Book
+// Event: Add a Book
 document.querySelector('#book-form').addEventListener('submit', (e) => {
-
     // Prevent actual submit
     e.preventDefault();
 
     // Get form values
     const title = document.querySelector('#title').value;
     const author = document.querySelector('#author').value;
-    const year = document.querySelector('#year').value;
+    const isbn = document.querySelector('#isbn').value;
 
-    //Make sure all fields are filled in before submitting 
-    if (title === '' || author === '' || year === '') {
-        alert('Please fill in all fields');
+    // Validate
+    if (title === '' || author === '' || isbn === '') {
+        UI.showAlert('Please fill in all fields', 'danger');
     } else {
-        // Instantiate a new book from the Book class to add a book
-        const book = new Book(title, author, year);
+        // Instatiate book
+        const book = new Book(title, author, isbn);
 
-        // Add book to UI
+        // Add Book to UI
         UI.addBookToList(book);
 
-        // Clear field method
+        // Add book to store
+        Store.addBook(book);
+
+        // Show success message
+        UI.showAlert('Book Added', 'success');
+
+        // Clear fields
         UI.clearFields();
     }
-
-
 });
 
-//Event: Remove a book (UI/Local Storage)
-//Event Propagation: delete the actual list
+// Event: Remove a Book
 document.querySelector('#book-list').addEventListener('click', (e) => {
+    // Remove book from UI
     UI.deleteBook(e.target);
-})
+
+    // Remove book from store
+    Store.removeBook(e.target.parentElement.previousElementSibling.textContent);
+
+    // Show success message
+    UI.showAlert('Book Removed', 'success');
+});
